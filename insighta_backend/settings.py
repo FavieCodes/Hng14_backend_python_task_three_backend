@@ -162,6 +162,10 @@ JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', SECRET_KEY)
 ACCESS_TOKEN_EXPIRY_MINUTES = 3
 REFRESH_TOKEN_EXPIRY_MINUTES = 5
 
+# OAuth Callback URLs
+WEB_CALLBACK_URL = os.environ.get('WEB_CALLBACK_URL', 'http://localhost:3000/auth/callback')
+CLI_CALLBACK_URL = os.environ.get('CLI_CALLBACK_URL', 'http://localhost:8080/callback')
+
 # GitHub OAuth
 GITHUB_CLIENT_ID = os.environ.get('GITHUB_CLIENT_ID')
 GITHUB_CLIENT_SECRET = os.environ.get('GITHUB_CLIENT_SECRET')

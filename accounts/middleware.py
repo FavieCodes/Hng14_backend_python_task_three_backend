@@ -6,10 +6,12 @@ from .models import User
 
 # Public endpoints that don't require authentication
 PUBLIC_PATHS = [
+    r'^/$',                      
+    r'^/health/?$',            
     r'^/auth/github',
     r'^/auth/refresh',
     r'^/admin/',
-    r'^/health/',
+    r'^/static/',
 ]
 
 # Role permissions
