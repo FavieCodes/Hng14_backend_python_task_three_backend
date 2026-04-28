@@ -53,7 +53,8 @@ def github_login(request):
         'created_at': timezone.now().isoformat(),
     }
     
-    # Build GitHub OAuth URL 
+    # Build GitHub OAuth URL
+    auth_url = (
         f"{settings.GITHUB_AUTH_URL}?"
         f"client_id={settings.GITHUB_CLIENT_ID}&"
         f"redirect_uri={github_callback_uri}&"
