@@ -24,7 +24,7 @@ def generate_code_challenge(code_verifier):
         hashlib.sha256(code_verifier.encode()).digest()
     ).decode('utf-8').replace('=', '')
 
-# Store PKCE sessions temporarily (use Redis in production)
+# Store PKCE sessions temporarily 
 pkce_sessions = {}
 
 @require_http_methods(['GET'])
@@ -34,25 +34,29 @@ def github_login(request):
     is_cli = request.GET.get('cli', 'false') == 'true'
     redirect_uri = request.GET.get('redirect_uri', settings.WEB_CALLBACK_URL)
     
+    github_callback_uri = request.GET.get(
+        'github_callback_uri', 
+        f"{settings.RAILWAY_PUBLIC_DOMAIN}/auth/github/callback" if hasattr(settings, 'RAILWAY_PUBLIC_DOMAIN') else request.build_absolute_uri('/auth/github/callback')
+    )
+    
     # Generate PKCE values
     code_verifier = generate_code_verifier()
     code_challenge = generate_code_challenge(code_verifier)
     state = secrets.token_urlsafe(32)
     
-    # Store session
-    session_id = state
-    pkce_sessions[session_id] = {
+    # Store session with redirect info
+    pkce_sessions[state] = {
         'code_verifier': code_verifier,
-        'redirect_uri': redirect_uri,
+        'redirect_uri': redirect_uri,  
+        'github_callback_uri': github_callback_uri, 
         'is_cli': is_cli,
         'created_at': timezone.now().isoformat(),
     }
     
-    # Build GitHub OAuth URL
-    auth_url = (
+    # Build GitHub OAuth URL 
         f"{settings.GITHUB_AUTH_URL}?"
         f"client_id={settings.GITHUB_CLIENT_ID}&"
-        f"redirect_uri={redirect_uri}&"
+        f"redirect_uri={github_callback_uri}&"
         f"state={state}&"
         f"code_challenge={code_challenge}&"
         f"code_challenge_method=S256"
@@ -69,7 +73,9 @@ def github_callback(request):
     error = request.GET.get('error')
     
     if error:
-        return JsonResponse({'status': 'error', 'message': f'GitHub error: {error}'}, status=400)
+        # Redirect to frontend with error
+        error_url = f"{settings.WEB_CALLBACK_URL}?error={error}"
+        return redirect(error_url)
     
     # Validate state
     session = pkce_sessions.get(state)
@@ -77,7 +83,8 @@ def github_callback(request):
         return JsonResponse({'status': 'error', 'message': 'Invalid state'}, status=400)
     
     code_verifier = session['code_verifier']
-    redirect_uri = session['redirect_uri']
+    redirect_uri = session['redirect_uri'] 
+    github_callback_uri = session['github_callback_uri']  
     is_cli = session['is_cli']
     
     # Exchange code for access token
@@ -88,7 +95,7 @@ def github_callback(request):
             'client_id': settings.GITHUB_CLIENT_ID,
             'client_secret': settings.GITHUB_CLIENT_SECRET,
             'code': code,
-            'redirect_uri': redirect_uri,
+            'redirect_uri': github_callback_uri,
             'code_verifier': code_verifier,
         }
     )
@@ -97,7 +104,8 @@ def github_callback(request):
     github_access_token = token_data.get('access_token')
     
     if not github_access_token:
-        return JsonResponse({'status': 'error', 'message': 'Failed to get GitHub token'}, status=400)
+        error_url = f"{redirect_uri}?error=Failed to get GitHub token"
+        return redirect(error_url)
     
     # Get GitHub user info
     user_response = requests.get(
@@ -141,8 +149,10 @@ def github_callback(request):
             }
         })
     
-    # For web, set HTTP-only cookies and redirect
-    response = redirect(f"{settings.WEB_CALLBACK_URL.replace('/auth/callback', '')}/dashboard")
+    redirect_url = f"{redirect_uri}?access_token={access_token}&refresh_token={refresh_token_obj.token}"
+    
+    # Also set cookies as fallback (optional)
+    response = redirect(redirect_url)
     response.set_cookie(
         'access_token', access_token,
         httponly=True, secure=True, samesite='Lax',
@@ -210,7 +220,6 @@ def refresh_token(request):
 @require_http_methods(['POST'])
 def logout(request):
     """Logout - revoke refresh token"""
-    # Try to get refresh token from body or cookie
     refresh_token_str = None
     
     # Check body
@@ -241,11 +250,19 @@ def logout(request):
 @require_http_methods(['GET'])
 def whoami(request):
     """Get current user info"""
+    # Try to get token from Authorization header first
     auth_header = request.headers.get('Authorization', '')
-    if not auth_header.startswith('Bearer '):
+    token = None
+    
+    if auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+    else:
+        # Fallback to cookie
+        token = request.COOKIES.get('access_token')
+    
+    if not token:
         return JsonResponse({'status': 'error', 'message': 'Unauthorized'}, status=401)
     
-    token = auth_header.split(' ')[1]
     user_id, error = verify_access_token(token)
     
     if error:
