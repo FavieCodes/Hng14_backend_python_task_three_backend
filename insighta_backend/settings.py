@@ -85,11 +85,23 @@ WSGI_APPLICATION = 'insighta_backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# Database configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')
-if DATABASE_URL:
+
+if DATABASE_URL and DATABASE_URL.startswith('postgres'):
+    # For PostgreSQL (production)
     DATABASES = {
         'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+    }
+elif DATABASE_URL and DATABASE_URL.startswith('sqlite'):
+    # For SQLite (local development)
+    import re
+    db_path = re.sub(r'^sqlite:///', '', DATABASE_URL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': db_path,
+        }
     }
 else:
     DATABASES = {

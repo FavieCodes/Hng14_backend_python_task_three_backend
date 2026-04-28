@@ -51,7 +51,9 @@
             padding: 20px;
             margin-bottom: 20px;
             border-radius: 8px;
+            transition: transform 0.2s;
         }
+        .endpoint:hover { transform: translateX(5px); }
         .method {
             display: inline-block;
             padding: 4px 12px;
@@ -63,7 +65,7 @@
         .method.POST { background: #28a745; color: white; }
         .method.GET { background: #17a2b8; color: white; }
         .method.DELETE { background: #dc3545; color: white; }
-        .url { font-family: monospace; font-size: 1.1em; font-weight: 600; }
+        .url { font-family: monospace; font-size: 1.1em; font-weight: 600; word-break: break-all; }
         pre {
             background: #2d2d2d;
             color: #f8f8f2;
@@ -72,6 +74,8 @@
             overflow-x: auto;
             margin: 15px 0;
             font-size: 0.9em;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
         .tester-section {
             background: #e9ecef;
@@ -90,6 +94,8 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             font-family: monospace;
+            background: white;
+            cursor: pointer;
         }
         .t-url {
             flex: 1;
@@ -97,6 +103,7 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             font-family: monospace;
+            min-width: 200px;
         }
         .t-send {
             padding: 8px 20px;
@@ -105,6 +112,7 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: background 0.2s;
         }
         .t-send:hover { background: #5a67d8; }
         .response-box {
@@ -116,7 +124,7 @@
             font-size: 12px;
             overflow-x: auto;
             white-space: pre-wrap;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
         }
         .keyword {
@@ -127,7 +135,22 @@
             border-radius: 15px;
             font-size: 0.85em;
             margin: 2px;
+            cursor: pointer;
+            transition: background 0.2s;
         }
+        .keyword:hover { background: #bbdef5; }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-200 { background: #28a745; color: white; }
+        .status-400 { background: #ffc107; color: #333; }
+        .status-401 { background: #dc3545; color: white; }
+        .status-403 { background: #dc3545; color: white; }
         .footer {
             background: #f8f9fa;
             padding: 20px;
@@ -135,9 +158,22 @@
             color: #666;
             border-top: 1px solid #e0e0e0;
         }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th { background: #f0f0f0; }
         @media (max-width: 768px) {
             .header h1 { font-size: 1.8em; }
             .content { padding: 20px; }
+            .tester-row { flex-direction: column; }
+            .t-url { width: 100%; }
         }
     </style>
 </head>
@@ -154,7 +190,17 @@
         <div class="section">
             <h2>📡 Base URL</h2>
             <pre id="baseUrlDisplay">Loading...</pre>
-            <p>All endpoints require the <code>X-API-Version: 1</code> header.</p>
+            <p>All API endpoints require the <code>X-API-Version: 1</code> header. Without it, you'll receive a <span class="status-badge status-400">400 Bad Request</span>.</p>
+        </div>
+
+        <!-- Environment Toggle -->
+        <div class="section">
+            <h2>🔄 Environment</h2>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button id="envLocal" onclick="setEnvironment('local')" style="padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; background: #28a745; color: white;">🏠 Local (localhost:8000)</button>
+                <button id="envProduction" onclick="setEnvironment('production')" style="padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer;">🌍 Production (Current)</button>
+            </div>
+            <p style="margin-top: 10px;" id="envStatus">Current: <strong>Production</strong></p>
         </div>
 
         <!-- Authentication Section -->
@@ -164,23 +210,23 @@
                 <div><span class="method GET">GET</span> <span class="url">/auth/github</span></div>
                 <p>Initiate GitHub OAuth login. Redirects to GitHub authorization page.</p>
                 <pre>GET /auth/github?cli=true&redirect_uri=http://localhost:8080/callback</pre>
-            </div>
-            <div class="endpoint">
-                <div><span class="method GET">GET</span> <span class="url">/auth/github/callback</span></div>
-                <p>OAuth callback endpoint. Exchanges code for tokens.</p>
+                <button class="keyword" onclick="testEndpoint('GET', '/auth/github')">🧪 Test</button>
             </div>
             <div class="endpoint">
                 <div><span class="method POST">POST</span> <span class="url">/auth/refresh</span></div>
                 <p>Refresh access token using refresh token.</p>
                 <pre>{"refresh_token": "string"}</pre>
+                <button class="keyword" onclick="testEndpoint('POST', '/auth/refresh', '{\"refresh_token\":\"your_refresh_token\"}')">🧪 Test</button>
             </div>
             <div class="endpoint">
                 <div><span class="method POST">POST</span> <span class="url">/auth/logout</span></div>
                 <p>Invalidate refresh token and logout.</p>
+                <button class="keyword" onclick="testEndpoint('POST', '/auth/logout')">🧪 Test</button>
             </div>
             <div class="endpoint">
                 <div><span class="method GET">GET</span> <span class="url">/auth/whoami</span></div>
                 <p>Get current authenticated user information.</p>
+                <button class="keyword" onclick="testEndpoint('GET', '/auth/whoami')">🧪 Test</button>
             </div>
         </div>
 
@@ -191,41 +237,41 @@
                 <div><span class="method GET">GET</span> <span class="url">/api/profiles/</span></div>
                 <p>Get all profiles with filtering, sorting, and pagination.</p>
                 <p><strong>Query Parameters:</strong></p>
-                <div class="keyword">gender</div> <div class="keyword">age_group</div> <div class="keyword">country_id</div>
-                <div class="keyword">min_age</div> <div class="keyword">max_age</div> <div class="keyword">min_gender_probability</div>
-                <div class="keyword">min_country_probability</div> <div class="keyword">sort_by</div> <div class="keyword">order</div>
-                <div class="keyword">page</div> <div class="keyword">limit</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/?gender=male&limit=10')">gender=male</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/?age_group=adult&limit=10')">age_group=adult</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/?country_id=NG&limit=10')">country_id=NG</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/?min_age=25&max_age=40&limit=10')">min_age=25&max_age=40</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/?sort_by=age&order=desc&limit=10')">sort_by=age&order=desc</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/?page=2&limit=10')">page=2</div>
                 <pre>GET /api/profiles/?gender=male&country_id=NG&min_age=25&sort_by=age&order=desc&page=1&limit=10</pre>
+                <button class="keyword" onclick="testEndpoint('GET', '/api/profiles/?limit=10')">🧪 Test</button>
             </div>
             <div class="endpoint">
                 <div><span class="method GET">GET</span> <span class="url">/api/profiles/search/</span></div>
                 <p>Natural language search using plain English.</p>
+                <div class="keyword" onclick="fillExample('/api/profiles/search/?q=young%20males%20from%20nigeria')">young males from nigeria</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/search/?q=females%20above%2030')">females above 30</div>
+                <div class="keyword" onclick="fillExample('/api/profiles/search/?q=adult%20males%20from%20kenya')">adult males from kenya</div>
                 <pre>GET /api/profiles/search/?q=young%20males%20from%20nigeria</pre>
+                <button class="keyword" onclick="testEndpoint('GET', '/api/profiles/search/?q=young%20males')">🧪 Test</button>
             </div>
             <div class="endpoint">
                 <div><span class="method GET">GET</span> <span class="url">/api/profiles/export/</span></div>
-                <p>Export profiles to CSV (Admin only).</p>
-                <pre>GET /api/profiles/export/?gender=male&country_id=NG</pre>
+                <p>Export profiles to CSV <span class="status-badge status-403">Admin only</span></p>
+                <button class="keyword" onclick="testEndpoint('GET', '/api/profiles/export/')">🧪 Test</button>
             </div>
             <div class="endpoint">
                 <div><span class="method POST">POST</span> <span class="url">/api/profiles/</span></div>
-                <p>Create a new profile (Admin only).</p>
+                <p>Create a new profile <span class="status-badge status-403">Admin only</span></p>
                 <pre>{"name": "John Doe"}</pre>
-            </div>
-            <div class="endpoint">
-                <div><span class="method GET">GET</span> <span class="url">/api/profiles/{id}/</span></div>
-                <p>Get a single profile by UUID.</p>
-            </div>
-            <div class="endpoint">
-                <div><span class="method DELETE">DELETE</span> <span class="url">/api/profiles/{id}/</span></div>
-                <p>Delete a profile (Admin only).</p>
+                <button class="keyword" onclick="testEndpoint('POST', '/api/profiles/', '{\"name\":\"testuser\"}')">🧪 Test</button>
             </div>
         </div>
 
         <!-- Role-Based Access Section -->
         <div class="section">
             <h2>👥 Role-Based Access Control</h2>
-            <table style="width:100%; border-collapse: collapse;">
+            <table>
                 <tr style="background:#f0f0f0;"><th>Endpoint</th><th>Method</th><th>Admin</th><th>Analyst</th></tr>
                 <tr><td>/api/profiles/</td><td>GET</td><td>✅</td><td>✅</td></tr>
                 <tr><td>/api/profiles/</td><td>POST</td><td>✅</td><td>❌</td></tr>
@@ -238,7 +284,7 @@
         <!-- Rate Limiting Section -->
         <div class="section">
             <h2>⏱️ Rate Limiting</h2>
-            <table style="width:100%; border-collapse: collapse;">
+            <table>
                 <tr style="background:#f0f0f0;"><th>Endpoint Group</th><th>Limit</th></tr>
                 <tr><td>/auth/*</td><td>10 requests per minute</td></tr>
                 <tr><td>All other endpoints</td><td>60 requests per minute per user</td></tr>
@@ -255,15 +301,18 @@
                         <option value="POST">POST</option>
                         <option value="DELETE">DELETE</option>
                     </select>
-                    <input type="text" id="url" class="t-url" placeholder="/api/profiles/?limit=10">
-                    <button class="t-send" onclick="sendRequest()">Send Request</button>
+                    <input type="text" id="url" class="t-url" placeholder="/api/profiles/?limit=10" value="/api/profiles/?limit=10">
+                    <textarea id="body" class="t-url" rows="3" placeholder='Request body (JSON) for POST/PUT' style="display: none; width: 100%; margin-top: 10px; font-family: monospace;"></textarea>
+                    <button class="t-send" onclick="sendRequest()">🚀 Send Request</button>
                 </div>
+                <div id="responseHeaders" class="response-box" style="background: #444; margin-bottom: 10px; display: none;"></div>
                 <div id="response" class="response-box">Response will appear here...</div>
                 <div style="margin-top: 15px;">
                     <p><strong>Quick Examples:</strong></p>
                     <button onclick="fillExample('/api/profiles/?limit=5')" class="keyword">All Profiles</button>
                     <button onclick="fillExample('/api/profiles/?gender=male&country_id=NG&limit=5')" class="keyword">Nigerian Males</button>
-                    <button onclick="fillExample('/api/profiles/search/?q=young%20males%20from%20nigeria')" class="keyword">Search: "young males from nigeria"</button>
+                    <button onclick="fillExample('/api/profiles/?min_age=25&max_age=40&sort_by=age&order=desc&limit=5')" class="keyword">Age 25-40 Desc</button>
+                    <button onclick="fillExample('/api/profiles/search/?q=young%20males')" class="keyword">Search: young males</button>
                     <button onclick="fillExample('/auth/whoami')" class="keyword">Who Am I</button>
                 </div>
             </div>
@@ -277,46 +326,102 @@
 </div>
 
 <script>
-    const BASE_URL = window.location.origin;
-    document.getElementById('baseUrlDisplay').textContent = BASE_URL;
+    let CURRENT_BASE_URL = window.location.origin;
+    document.getElementById('baseUrlDisplay').textContent = CURRENT_BASE_URL;
+
+    function setEnvironment(env) {
+        if (env === 'local') {
+            CURRENT_BASE_URL = 'http://localhost:8000';
+            document.getElementById('envLocal').style.background = '#28a745';
+            document.getElementById('envLocal').style.color = 'white';
+            document.getElementById('envProduction').style.background = '';
+            document.getElementById('envProduction').style.color = '';
+            document.getElementById('envStatus').innerHTML = 'Current: <strong>Local (http://localhost:8000)</strong>';
+        } else {
+            CURRENT_BASE_URL = window.location.origin;
+            document.getElementById('envProduction').style.background = '#28a745';
+            document.getElementById('envProduction').style.color = 'white';
+            document.getElementById('envLocal').style.background = '';
+            document.getElementById('envLocal').style.color = '';
+            document.getElementById('envStatus').innerHTML = 'Current: <strong>Production</strong>';
+        }
+        document.getElementById('baseUrlDisplay').textContent = CURRENT_BASE_URL;
+    }
 
     function fillExample(endpoint) {
         document.getElementById('url').value = endpoint;
         sendRequest();
     }
 
+    function testEndpoint(method, endpoint, body = null) {
+        document.getElementById('method').value = method;
+        document.getElementById('url').value = endpoint;
+        if (body) {
+            const bodyTextarea = document.getElementById('body');
+            bodyTextarea.style.display = 'block';
+            bodyTextarea.value = body;
+        }
+        sendRequest();
+    }
+
     async function sendRequest() {
         const method = document.getElementById('method').value;
-        let url = document.getElementById('url').value;
+        let url = document.getElementById('url').value.trim();
         const responseDiv = document.getElementById('response');
+        const headersDiv = document.getElementById('responseHeaders');
+        const bodyTextarea = document.getElementById('body');
+        let requestBody = null;
         
         if (!url.startsWith('http')) {
-            url = BASE_URL + (url.startsWith('/') ? url : '/' + url);
+            url = CURRENT_BASE_URL + (url.startsWith('/') ? url : '/' + url);
         }
         
-        responseDiv.textContent = 'Loading...';
+        responseDiv.textContent = '⏳ Loading...';
+        headersDiv.style.display = 'none';
+        
+        const options = {
+            method: method,
+            headers: {
+                'X-API-Version': '1',
+                'Content-Type': 'application/json'
+            }
+        };
+        
+        // Add body for POST/PUT
+        if ((method === 'POST' || method === 'PUT') && bodyTextarea.value.trim()) {
+            try {
+                requestBody = JSON.parse(bodyTextarea.value);
+                options.body = JSON.stringify(requestBody);
+            } catch (e) {
+                responseDiv.textContent = 'Invalid JSON in request body: ' + e.message;
+                return;
+            }
+        }
         
         try {
-            const options = {
-                method: method,
-                headers: {
-                    'X-API-Version': '1',
-                    'Content-Type': 'application/json'
-                }
-            };
-            
-            // Add credentials for auth endpoints
-            if (url.includes('/auth/')) {
-                options.credentials = 'include';
-            }
-            
             const response = await fetch(url, options);
             const data = await response.json();
+            
+            // Show response headers
+            headersDiv.style.display = 'block';
+            headersDiv.innerHTML = `📋 Status: ${response.status} ${response.statusText}\n📋 X-API-Version: ${response.headers.get('X-API-Version') || 'Not set'}`;
+            
             responseDiv.textContent = JSON.stringify(data, null, 2);
         } catch (error) {
-            responseDiv.textContent = 'Error: ' + error.message;
+            responseDiv.textContent = '❌ Error: ' + error.message + '\n\nMake sure the server is running at ' + CURRENT_BASE_URL;
         }
     }
+
+    // Show/hide body textarea based on method
+    document.getElementById('method').addEventListener('change', function() {
+        const bodyTextarea = document.getElementById('body');
+        if (this.value === 'POST' || this.value === 'PUT') {
+            bodyTextarea.style.display = 'block';
+        } else {
+            bodyTextarea.style.display = 'none';
+            bodyTextarea.value = '';
+        }
+    });
 </script>
 </body>
 </html>
