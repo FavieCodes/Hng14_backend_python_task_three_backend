@@ -1,1 +1,1 @@
-web: python manage.py migrate && python manage.py seed_data && gunicorn insighta_backend.wsgi:application
+web: gunicorn insighta_backend.wsgi:application
